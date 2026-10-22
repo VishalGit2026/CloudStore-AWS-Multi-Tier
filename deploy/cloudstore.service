@@ -1,0 +1,22 @@
+[Unit]
+Description=CloudStore Flask application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cloudstore
+Group=cloudstore
+WorkingDirectory=/opt/cloudstore
+EnvironmentFile=/etc/cloudstore/cloudstore.env
+ExecStart=/opt/cloudstore/venv/bin/gunicorn --workers 2 --threads 4 --bind 127.0.0.1:8000 --access-logfile - --error-logfile - app:app
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/cloudstore
+
+[Install]
+WantedBy=multi-user.target

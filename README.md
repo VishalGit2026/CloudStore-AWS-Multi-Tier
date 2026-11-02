@@ -1,129 +1,208 @@
-# CloudStore — AWS multi-tier storefront demo
+# CloudStore – Production-Ready Highly Available AWS Multi-Tier Architecture
 
-Responsive technology storefront branded **CloudStore**, with the centered byline **Vishal Baskaran**. Built as a portfolio application for the AWS multi-tier project.
+**A scalable, highly available cloud-hosted e-commerce application built using AWS, Python Flask, MySQL, Application Load Balancer, and Auto Scaling.**
 
-## What is included
+Developed by **Vishal B.**
 
-- `app.py`: Flask API and storefront routing. Includes `/health` for the existing ALB health check, `/api/health`, product/category APIs and a transactional demo-order endpoint.
-- `templates/index.html`, `static/css/styles.css`, `static/js/app.js`: responsive storefront, categories, search, sort, cart drawer and demo checkout.
-- `sql/01-migrate-products.sql`: one-time migration adding brand, product image URL, badge and featured flag to the existing products table.
-- `sql/02-seed-catalog.sql`: six categories and eighteen fictional demonstration products with sample INR prices.
-- `sql/03-create-app-user.sql`: restricted application database user; replace its password placeholder before running.
-- `deploy/`: systemd and Nginx examples.
+[GitHub Repository](https://github.com/VishalGit2026/CloudStore-AWS-Multi-Tier)
 
-The catalogue uses fictional demo product names/prices. Checkout stores a demo order in MySQL, decrements demo stock and **does not process payments**. Product photos load from Unsplash; a local SVG fallback is used when a photo cannot load.
+---
 
-## Existing database assumptions
+## Project Overview
 
-The RDS database `cloudstore` already contains these tables from the earlier project steps: `categories`, `products`, `customers`, `orders`, and `order_items`. The existing table columns must match the CloudStore schema created earlier. The migration adds `brand`, `image_url`, `badge`, and `featured` to `products`.
+CloudStore is a cloud-based technology storefront deployed on Amazon Web Services (AWS) using a multi-tier architecture.
 
-## Database preparation (run once)
+The project demonstrates how to deploy and operate a web application using private EC2 application servers, an Application Load Balancer, an Auto Scaling Group, and a private Amazon RDS MySQL database.
 
-1. Connect as the RDS master user through the trusted SSL connection already tested.
-2. Run `sql/01-migrate-products.sql` **once only**. It adds columns; running it again will report duplicate-column errors.
-3. Run `sql/02-seed-catalog.sql`. It is safe to run again; category names and SKUs are unique and are upserted.
-4. Edit `sql/03-create-app-user.sql`, replace `REPLACE_WITH_A_LONG_UNIQUE_PASSWORD` with a new strong password, and run it once. Use this limited user for the website; do not use the RDS master account in the application.
-5. Save the application password securely. Never commit it or the `.env` file to GitHub.
+The infrastructure is designed to improve application availability, scalability, security, and maintainability.
 
-## Deploy on BOTH EC2 App Servers
+## Architecture Overview
 
-Repeat these steps on App Server 01 and App Server 02. Keep RDS private and permit inbound TCP/3306 from `CloudStore-App-SG` only.
-
-### 1. Prepare Amazon Linux 2023
-
-```bash
-sudo dnf install -y python3 python3-pip nginx
-sudo useradd --system --create-home --shell /sbin/nologin cloudstore
-sudo mkdir -p /opt/cloudstore /etc/cloudstore
-sudo chown -R cloudstore:cloudstore /opt/cloudstore
+```text
+                 Internet Users
+                       |
+                       v
+              Application Load Balancer
+                       |
+                Target Group (HTTP:80)
+                       |
+             -----------------------
+             |                     |
+             v                     v
+       EC2 App Server 01      EC2 App Server 02
+       Availability Zone A    Availability Zone B
+             |                     |
+             -----------------------
+                       |
+                 Flask + Gunicorn
+                       |
+                    Nginx
+                       |
+                       v
+                Amazon RDS MySQL
+                 Private Database
 ```
 
-Copy the package's application files to `/opt/cloudstore` preserving `app.py`, `templates/`, `static/`, and `requirements.txt`. Then:
+**Infrastructure components:**
+- Public-facing Application Load Balancer
+- Private EC2 application instances
+- Auto Scaling Group for instance management
+- Amazon RDS MySQL database
+- Security Groups controlling tier-to-tier communication
 
-```bash
-sudo -u cloudstore python3 -m venv /opt/cloudstore/venv
-sudo -u cloudstore /opt/cloudstore/venv/bin/pip install --upgrade pip
-sudo -u cloudstore /opt/cloudstore/venv/bin/pip install -r /opt/cloudstore/requirements.txt
+## AWS Services & Technologies
+
+| Service / Technology | Purpose |
+|---|---|
+| Amazon VPC | Network isolation |
+| Public & Private Subnets | Network segmentation |
+| Amazon EC2 | Application hosting |
+| Application Load Balancer | Traffic distribution |
+| Auto Scaling Group | Application instance scaling |
+| Amazon RDS MySQL | Managed relational database |
+| IAM | Access and permissions management |
+| Security Groups | Network access control |
+| AWS Secrets Manager | Database credential management |
+| Amazon Linux 2023 | Application server operating system |
+| Python Flask | Backend application |
+| Gunicorn | Python application server |
+| Nginx | Reverse proxy |
+| MySQL | Database |
+| HTML, CSS, JavaScript | Frontend |
+
+## Key Features
+
+- Multi-tier AWS architecture.
+- Load-balanced application traffic.
+- Two EC2 application servers across separate Availability Zones.
+- Auto Scaling Group configured with desired capacity of 2 and scaling range of 2–4 instances.
+- Private RDS MySQL database.
+- Database connectivity using SSL/TLS.
+- Flask REST API endpoints.
+- Product catalogue with categories and search.
+- Shopping cart and demonstration checkout functionality.
+- Systemd service management.
+- Nginx reverse proxy configuration.
+
+## Infrastructure Configuration
+
+**AWS Region:** Asia Pacific (Sydney) – `ap-southeast-2`
+
+| Component | Configuration |
+|---|---|
+| Application Load Balancer | CloudStore-App-ALB |
+| Target Group | CloudStore-App-TG |
+| Auto Scaling Group | CloudStore-App-ASG |
+| Application Server 01 | `10.20.11.98` |
+| Application Server 02 | `10.20.12.42` |
+| Database | Amazon RDS MySQL |
+| Database Name | `cloudstore` |
+| Application Port | 80 |
+| Gunicorn Port | 8000 (localhost) |
+| Database Port | 3306 |
+
+## Application Testing & Validation
+
+The following application endpoints were tested through the Application Load Balancer:
+
+| Endpoint | Test Result |
+|---|---|
+| `/` | HTTP 200 |
+| `/health` | HTTP 200 |
+| `/api/health` | HTTP 200 |
+| `/api/categories` | HTTP 200 |
+| `/api/products` | HTTP 200 |
+| `/api/products/1` | HTTP 200 |
+
+**Additional validation:**
+- Database health check returned application and database status as `ok`.
+- Ten consecutive `/api/health` requests returned HTTP 200.
+- Product catalogue returned 18 demonstration products.
+- Category API returned 6 categories.
+- Frontend category browsing, search, product details, and cart interactions were tested.
+
+*Note: Checkout is a demonstration feature and is not a production payment-processing system.*
+
+## Security Implementation
+
+- RDS database is kept private.
+- Application Security Group permits inbound HTTP traffic only from the ALB Security Group.
+- Database Security Group permits MySQL traffic only from the application Security Group.
+- Application uses a restricted database account instead of the RDS master account.
+- Database connections use SSL/TLS certificate verification.
+- IAM instance role provides controlled access to AWS Secrets Manager.
+- Sensitive credentials are kept outside the Git repository.
+- Health checks are separated into application health and database health endpoints.
+
+## Repository Structure
+
+```text
+CloudStore-AWS-Multi-Tier/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+│
+├── templates/
+│   └── index.html
+│
+├── static/
+│   ├── css/
+│   └── js/
+│
+├── sql/
+│   ├── 01-migrate-products.sql
+│   ├── 02-seed-catalog.sql
+│   └── 03-create-app-user.sql
+│
+├── deploy/
+│   ├── cloudstore.service
+│   └── cloudstore-nginx.conf
+│
+└── docs/
+    ├── CloudStore_AWS_Multi_Tier_Project_Documentation_With_Cover.pdf
+    └── CloudStore_AWS_Multi_Tier_Project_Documentation_With_Cover.docx
 ```
 
-### 2. Install RDS CA bundle
+## Project Documentation
 
-```bash
-sudo curl -fSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /etc/cloudstore/global-bundle.pem
-sudo chown root:cloudstore /etc/cloudstore/global-bundle.pem
-sudo chmod 640 /etc/cloudstore/global-bundle.pem
-```
+The complete project documentation, including implementation details and supporting screenshots, is available below:
 
-### 3. Configure the application environment
+- [Complete Project Documentation (PDF)](docs/CloudStore_AWS_Multi_Tier_Project_Documentation_With_Cover.pdf)
+- [Editable Project Documentation (DOCX)](docs/CloudStore_AWS_Multi_Tier_Project_Documentation_With_Cover.docx)
 
-Create `/etc/cloudstore/cloudstore.env` (do not place this file inside the GitHub repository):
+## Deployment Overview
 
-```ini
-DB_HOST=your-rds-endpoint
-DB_PORT=3306
-DB_NAME=cloudstore
-DB_USER=cloudstore_app
-DB_PASSWORD=your-unique-app-user-password
-DB_SSL_CA=/etc/cloudstore/global-bundle.pem
-DB_CONNECT_TIMEOUT=5
-LOG_LEVEL=INFO
-```
+1. Create the VPC, public subnets, and private subnets.
+2. Configure the required Security Groups.
+3. Create the Amazon RDS MySQL database.
+4. Prepare the EC2 application servers.
+5. Configure Flask, Gunicorn, and Nginx.
+6. Configure database connectivity and application environment variables.
+7. Create the Application Load Balancer and Target Group.
+8. Configure the Launch Template and Auto Scaling Group.
+9. Validate application health and database connectivity.
+10. Test application access through the ALB DNS endpoint.
 
-Then secure it:
+Refer to the project documentation for detailed configuration and deployment instructions.
 
-```bash
-sudo chown root:cloudstore /etc/cloudstore/cloudstore.env
-sudo chmod 640 /etc/cloudstore/cloudstore.env
-```
+## Important Security Notice
 
-For a more mature setup, retrieve the DB password from AWS Systems Manager Parameter Store SecureString or Secrets Manager at boot rather than storing it directly in an environment file.
+This repository is intended for educational and portfolio demonstration purposes.
 
-### 4. Install and start Gunicorn service
+- Never commit `.env` files, database passwords, access keys, private keys, or sensitive customer data.
+- Use AWS IAM roles and Secrets Manager for secure credential management.
+- Review AWS resource costs before deploying infrastructure.
+- Demo checkout does not process real payments.
 
-```bash
-sudo cp /opt/cloudstore/deploy/cloudstore.service /etc/systemd/system/cloudstore.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now cloudstore
-sudo systemctl status cloudstore --no-pager
-```
+## Author
 
-### 5. Configure Nginx reverse proxy
+**Vishal B.**
 
-First inspect current configuration and back it up. The current project may have a static-site server block, so ensure **only one** default server listens on port 80. Do not blindly add a second `default_server` block.
+Cloud & Cybersecurity Enthusiast | CEH Certified | AWS Cloud Projects
 
-```bash
-sudo nginx -T | grep -nE 'listen .*80|server_name'
-sudo cp -a /etc/nginx/conf.d /etc/nginx/conf.d.backup
-```
+- GitHub: [VishalGit2026](https://github.com/VishalGit2026)
 
-Install the provided Nginx server block as the active port-80 server configuration (replace the existing static-site server block rather than leaving duplicate default blocks):
+---
 
-```bash
-sudo cp /opt/cloudstore/deploy/cloudstore-nginx.conf /etc/nginx/conf.d/cloudstore.conf
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-If `nginx -t` reports a duplicate default server, inspect `nginx -T` and disable the old port-80 server file after backing it up, then run `nginx -t` again.
-
-### 6. Test each server locally
-
-```bash
-curl -i http://127.0.0.1/health
-curl -i http://127.0.0.1/api/health
-curl -s http://127.0.0.1/api/categories
-curl -s http://127.0.0.1/api/products
-```
-
-Expected: `/health` returns HTTP 200 with `healthy`; `/api/health` returns `{"application":"ok","database":"ok"}`; product APIs return seeded catalog records.
-
-Then test the ALB DNS name in a browser. Confirm the existing target group `/health` checks still pass and both EC2 targets are healthy.
-
-## Important project security notes
-
-- Do not enable public access on RDS. Keep TCP/3306 restricted to the application security group.
-- Use the restricted `cloudstore_app` DB user, not `cloudstoreadmin`, in the web application.
-- The application verifies the RDS TLS certificate and hostname.
-- `/health` checks the web process only so a temporary DB issue does not cause ASG instance replacement. `/api/health` checks the DB too.
-- Demo checkout is not a payment system; do not collect payment card details or real sensitive customer data.
-- Do not commit RDS passwords, app DB passwords, `.env`, PEM files, private keys or real customer records.
+*Built as a hands-on AWS cloud architecture and deployment project.*
